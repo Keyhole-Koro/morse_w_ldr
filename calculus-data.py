@@ -1,38 +1,75 @@
 #..--...--..--
 #https://stellasia.github.io/blog/2018-12-03-coding-exercice-morse/
 import matplotlib.pyplot as plt
+import re
 
 def judge(x, y):
-	incliments = []
+	inclination = []
 	differ = 10
 	for index, x_ele in enumerate(x):
 		y_ele = y[index]
 		#approximete
 		if abs(y_ele) <= differ:
-			incliments.append(1)
+			inclination.append(0)
 		elif y_ele > differ:
-			incliments.append(0)
+			inclination.append(1)
 		else:
-			incliments.append(-1)
-	print(incliments)
+			inclination.append(-1)
+	extract(inclination)
+	print(inclination)
 
+def extract(data):
+	pattern = r'-1+0*1+'
+	
+	data_str = ''.join(str(num) for num in data)
+	matches = re.findall(pattern, data_str)
+	matches = [int(match) for match in matches]
+	
+	extract0_p = r'0+'
+	extracted0 = []
+	nem_extracted0 = []
+	for m in matches:
+		count = 0
+		v = re.findall(extract0_p, str(m))
+		extracted0.append(v)
+		for v2 in v:
+			for char in v2:
+				count += 1
+		nem_extracted0.append(count)
+	print(extracted0)
+	print(nem_extracted0)
+	
 def converge_to_zero(initial_value, convergence_rate):
 	current_value = initial_value
-
-	#while abs(current_value) > 0.001:  # Specify a threshold for convergence
 	current_value -= current_value * convergence_rate
 
 	return current_value
 
 def noisefilter(previous, current):
 	difference = abs(previous - current) 
-	if difference > 3 and abs(current) < 35:
-		k = 0.9
-		print(abs(previous - current))
+	if difference > 3 and abs(current) < 50:
+		k = 1
 	else:
 		k = 0
 	return converge_to_zero(current, k)
 	#return current+k*(previous - current)
+	
+def smooth_data(data, window_size):
+    cumulative_sum = [0] * len(data)
+    smoothed_data = [0] * len(data)
+
+    cumulative_sum[0] = data[0]
+    for i in range(1, len(data)):
+        cumulative_sum[i] = cumulative_sum[i-1] + data[i]
+
+    half_window = window_size // 2
+    for i in range(len(data)):
+        start_index = max(0, i - half_window)
+        end_index = min(len(data) - 1, i + half_window)
+        window_size_actual = end_index - start_index + 1
+        smoothed_data[i] = (cumulative_sum[end_index] - cumulative_sum[start_index] + data[start_index]) / window_size_actual
+
+    return smoothed_data
 
 def makeplot(x, y):
 	plt.plot(x, y)
@@ -51,7 +88,7 @@ def main():
 	x = []
 	y = []
 	old_y = []
-	multiply = 3
+	multiply = 2
 	current_data = multiply
 	while current_data <= len(data):
 		x_range = multiply
@@ -68,8 +105,13 @@ def main():
 
 		#print(previous_y, current_y, y_range, new_y_range)
 		current_data += multiply
-	judge(x, y)
-	plt.plot(x, old_y)
+	
+	smooth_y = smooth_data(old_y, 5)
+	
+	judge(x, smooth_y)
+	
+	#plt.plot(x, old_y)
+	plt.plot(x, smooth_y)
 	makeplot(x, y)
 
 main()
