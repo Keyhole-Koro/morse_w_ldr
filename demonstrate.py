@@ -2,42 +2,64 @@ import time
 import array
 import datetime
 
+previous_y_value = 0
+
 def main(file):
 	data = file.read().split()
 	l_input_data = []
 	input_data = array.array('i')
 	count = 0
 	start_time = datetime.datetime()
-	function1Interval = 1000
+	function1Interval = 20
 	function2Interval = 1000
 	
 	function1PreviousMillis = convert_millis(current_time)
 	function2PreviousMillis = convert_millis(current_time)
-	
-	for d in data:#equivalent to loop
-		elapsed_time = elapsed(start_time)#in milliseconds which is equivalent to millis in arduino
+	#equivalent to loop
+	for d in data:
+		#in milliseconds which is equivalent to millis in arduino
+		elapsed_time = elapsed(start_time)
 		
-		if elapsed_time - function1PreviousMillis  >= function1Interval:#get values from ldr
+		#get values from ldr
+		if elapsed_time - function1PreviousMillis  >= function1Interval:
 			current_time = datetime.datetime()
 			function1PreviousMillis = convert_millis(current_time)
-			set_value(d)
+			if previous_ele_num == 0:
+				previous_y_value = d
+			set_value(d, previous_y_value)
 			
 		if elapsed_time - function2PreviousMillis  >= function2Interval:#calculus
 			current_time = datetime.datetime()
 			function2PreviousMillis = convert_millis(current_time)
+			smooth_data(input_data, 5)
 			
-			
-		time.sleep(0.005)
-
-def set_value(value):
-	input_data.append(value)
-	if count == 200:
+def set_value(new_y_value, previous_y_value):
+	x_range = 2
+	y_range = new_y_value - previous_y_value
+	inclination_value = int(inclination(x_range, y_range))
+	input_data.append(inclination_value)
+	if count == 200:#200/2
 		l_input_data.append(input_data)
 		del input_data
 		input_data = array.array('i')
 		count = 0
+	previous_y_value = new_y_value
 	count++1
+	
+def inclination(x_range, y_range):
+	value = y_range/x_range
+	return value
 
+def set_mean_values():
+	pass
+
+def mean_values(near_sum, new_value, previous_value):
+	difference = new_value - previous_value
+	new_sum = near_sum + difference
+	near_sum = new_sum/2
+	return near_sum
+	
+	
 def elapsed(time):
 	between = datetime.datetime()-time
 	millis = convert_milli(between)
