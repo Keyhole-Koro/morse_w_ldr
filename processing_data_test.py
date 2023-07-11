@@ -52,24 +52,23 @@ def noisefilter(previous, current):
 	else:
 		k = 0
 	return converge_to_zero(current, k)
-	#return current+k*(previous - current)
 	
 def smooth_data(data, window_size):
-    cumulative_sum = [0] * len(data)
-    smoothed_data = [0] * len(data)
+	cumulative_sum = [0] * len(data)
+	smoothed_data = [0] * len(data)
 
-    cumulative_sum[0] = data[0]
-    for i in range(1, len(data)):
-        cumulative_sum[i] = cumulative_sum[i-1] + data[i]
+	cumulative_sum[0] = data[0]
+	for i in range(1, len(data)):
+		cumulative_sum[i] = cumulative_sum[i-1] + data[i]
 
-    half_window = window_size // 2
-    for i in range(len(data)):
-        start_index = max(0, i - half_window)
-        end_index = min(len(data) - 1, i + half_window)
-        window_size_actual = end_index - start_index + 1
-        smoothed_data[i] = (cumulative_sum[end_index] - cumulative_sum[start_index] + data[start_index]) / window_size_actual
-
-    return smoothed_data
+	half_window = window_size // 2
+	for i in range(len(data)):
+		start_index = max(0, i - half_window)
+		end_index = min(len(data) - 1, i + half_window)
+		window_size_actual = end_index - start_index + 1
+		smoothed_data[i] = int((cumulative_sum[end_index] - cumulative_sum[start_index] + data[start_index]) / window_size_actual)
+		
+	return smoothed_data
 
 def makeplot(x, y):
 	plt.plot(x, y)
@@ -88,14 +87,14 @@ def main():
 	x = []
 	y = []
 	old_y = []
-	multiply = 2
-	current_data = multiply
+	interval = 2
+	current_data = interval
 	while current_data <= len(data):
-		x_range = multiply
-		y_range = int(data[current_data]) - int(data[current_data - multiply])
+		x_range = interval
+		y_range = int(data[current_data]) - int(data[current_data - interval])
 		
 		#remake later
-		previous_y = int(data[current_data - multiply]) - int(data[current_data - multiply*2])
+		previous_y = int(data[current_data - interval]) - int(data[current_data - interval*2])
 		
 		current_y = y_range
 		new_y_range = noisefilter(previous_y, current_y)
@@ -103,17 +102,16 @@ def main():
 		y.append(new_y_range)
 		old_y.append(current_y)
 
-		#print(previous_y, current_y, y_range, new_y_range)
-		current_data += multiply
+		current_data += interval
 	
 	smooth_y = smooth_data(old_y, 5)
-	
+	print(smooth_y)
 	judge(x, smooth_y)
 	
 	#plt.plot(x, old_y)
 	plt.plot(x, smooth_y)
 	makeplot(x, y)
 
-main()
 
-
+if __name__ == '__main':
+	main()
