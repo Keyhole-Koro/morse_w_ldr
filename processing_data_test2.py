@@ -54,16 +54,9 @@ class morse:
 				###
 				
 				if self.index == 50:
-					for i in range(1, 50):
-						start = max(0, i-2)
-						part_data = self.input_data[start:i]
-						mean_value = sum(part_data)/len(part_data)
-						#print(i, part_data, self.input_data[i], int(mean_value))
-						if abs(mean_value) < 5:
-							mean_value = converge_to_zero(mean_value, 1)
-						self.mean_input_data.append(round(mean_value))
-					
-					self.l_input_data.append(self.input_data)
+					smoothed_data = smooth_data(self.input_data, 5)
+					del self.input_data
+					self.l_input_data.append(smoothed_data)
 					self.input_data = array.array('i')
 					self.index = 0
 				self.input_data.append(round(inclination))
@@ -74,7 +67,6 @@ class morse:
 				function2PreviousMillis = elapsed_time
 				
 				if len(self.l_input_data) > 0:
-					print(self.l_input_data[0])
 					all_data.extend(self.l_input_data[0])
 					del self.l_input_data[0]
 				
