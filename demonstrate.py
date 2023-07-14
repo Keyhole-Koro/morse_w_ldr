@@ -2,6 +2,8 @@ import time
 import array
 import datetime
 import threading#is not implemented in arduino
+import matplotlib.pyplot as plt
+
 
 class morse:
 	"""value is single
@@ -17,40 +19,60 @@ class morse:
 		self.index = 0
 		self.mean_data = array.array('i')
 		self.mean_value_count = 0
+		self.l_approximated_data = []
 		
 	def main(self):
 		start_time = time.time()
 		function1Interval = 20
 		function2Interval = 1000
+		function3Interval = 2000
 		
 		function1PreviousMillis = 0
 		function2PreviousMillis = 0
+		function3PreviousMillis = 0
+		
+		data_index = 0
+		
+		previous_value = int(self.data[0])#temporary
+		
+		extract_data = 0
+		
+		
 		
 		while True:
 			#in milliseconds which is equivalent to millis in arduino
 			elapsed_time = elapsed(start_time)
 			
 			if elapsed_time - function1PreviousMillis >= function1Interval:
-				new_value = int(self.data[self.index])#get values from ldr
+				function1PreviousMillis = elapsed_time
 				
-				self.set_value(new_value)
-
-				smoothed_value = self.smooth_value(new_value)
+				new_input_value = int(self.data[data_index])#get values from ldr
+				self.set_value(int((new_input_value-previous_value)/2))
 				
+				smoothed_value = self.smooth_value()
 				self.set_mean(smoothed_value)
 				
-				print(self.mean_value_count, smoothed_value)
-				self.isFull()
+				self.ifFull()
 				
-				seconds = time.time()
-				function1PreviousMillis = elapsed_time
+				previous_value = new_input_value
+				
+				data_index+=1
 
-			if elapsed_time - function2PreviousMillis >= function2Interval:#calculus
-				print('called2')
+			if elapsed_time - function2PreviousMillis >= function2Interval:#add or extract_data < 
 				function2PreviousMillis = elapsed_time
+				
+				data = self.l_input_data[extract_data]
+				
+				if data.buffer_info()[1] == 200:
+					approximated_data = approximate(data)
 
+					self.l_approximated_data.append(approximated_data)
+					
+					extract_data+=1
+				
+			if elapsed_time - function3PreviousMillis >= function3Interval:
 
-	def smooth_value(self, new_value):
+	def smooth_value(self):
 		
 		#self.index = len(self.input_data)#might take much time
 		self.index = self.count
@@ -73,15 +95,26 @@ class morse:
 		
 		self.mean_value_count+=1
 		
-	def isFull(self):
+	def ifFull(self):
+		if self.count == 200:
+			self.input_data = array.array('i')
+			self.count = 0
 		if self.mean_value_count == 200:
+			#might be better to store pointers in c++
+			plt.plot(range(len(self.mean_data)), self.mean_data)
+			plt.show()
 			self.l_input_data.append(self.mean_data)
 			self.mean_data = array.array('i')
 			self.mean_value_count = 0
-		if self.count == 200:
-			self.l_input_data.append(self.input_data)
-			self.input_data = array.array('i')
-			self.count = 0
+			
+def makeplot(y):
+	plt.plot(range(len(y)), y)
+	
+	plt.xlabel('X Range')
+	plt.ylabel('Y Range')
+	plt.title('Plot of X Range and Y Range')
+
+	plt.show()
 
 def inclination(x_range, y_range):
 	value = y_range/x_range
@@ -111,7 +144,20 @@ def convert_millis(seconds):
 	milliseconds = round(seconds*1000)
 	return milliseconds
 
-
+def approximate(data):
+	inclination = array.array('i')
+	differ = 10
+	for index, data_ele in enumerate(data):
+		data_ele = data[index]
+		#approximete
+		if abs(data_ele) <= differ:
+			data_ele = 0
+		elif data_ele > differ:
+			data_ele = 1
+		else:
+			data_ele = -1
+	print(inclination)
+	return inclination
 
 def makeplot(x, y):
 	plt.plot(x, y)
