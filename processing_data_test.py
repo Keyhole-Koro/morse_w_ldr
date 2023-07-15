@@ -91,7 +91,7 @@ def main():
 	current_data = interval
 	while current_data <= len(data):
 		x_range = interval
-		y_range = int(data[current_data]) - int(data[current_data - interval])
+		y_range = (int(data[current_data]) - int(data[current_data - interval]))
 		
 		#remake later
 		previous_y = int(data[current_data - interval]) - int(data[current_data - interval*2])
@@ -108,10 +108,27 @@ def main():
 	print(smooth_y)
 	judge(x, smooth_y)
 	
-	#plt.plot(x, old_y)
+	plt.plot(x, old_y)
 	plt.plot(x, smooth_y)
 	makeplot(x, y)
 
+def main2():
+	file_path = "C:\\Users\\kiho\\OneDrive\\デスクトップ\\morse\\kiho2.txt"
+	file = open(file_path, 'r')
+	data = file.read().split()
+	file.close()
+	x = []
+	y = []
+	current_data = 0
+	for _ in range(449):
+		
+		print(current_data)
+		x.append(current_data)
+		y.append(int(data[current_data]))
 
-if __name__ == '__main':
-	main()
+		current_data += 1
+	
+	makeplot(x, y)
+	
+if __name__ == '__main__':
+	main2()
