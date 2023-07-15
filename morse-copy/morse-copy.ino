@@ -1,29 +1,32 @@
 #include <Arduino.h>
 #include <ArduinoSTL.h>
+#include <limits.h>
 
 unsigned long previousTime1 = 0;
-unsigned long interval1 = 20;
+unsigned char interval1 = 10;
 
 unsigned long previousTime2 = 0;
-unsigned long interval2 = 100;
+unsigned int interval2 = 100;
 
 unsigned long previousTime3 = 0;
-unsigned long interval3 = 100;
+unsigned int interval3 = 1000;
+
+signed char empty_ = -99;
 
 const int limit_input_data = 100;
 
-std::vector<int> smoothed_data(limit_input_data);
-std::vector<int> input_data(limit_input_data);
+std::vector<std::vector<signed char>> list_smoothed_data;
+std::vector<signed char> input_data(limit_input_data);
 
-std::vector<int> temporary_last_data;
-std::vector<std::vector<int>> plus_minus_length;
+std::vector<signed char> temporary_previous_data;
+std::vector<signed char> plus_minus_length;
 
 int input_index = 0;
 int previous_value = 0;
 
-std::vector<int> smooth_data(const std::vector<int>& data, int window_size, int data_size);
-std::vector<int> extract_zero(const std::vector<int>& values, int threshold, int steps);
-std::vector<int> ifUndulations(const std::vector<int>& values, const std::vector<int>& zero_indices, int threshold);
+std::vector<signed char> smooth_data(const std::vector<signed char>& data, signed char window_size, int data_size);
+std::vector<signed char> extract_zero(const std::vector<signed char>& values, signed char threshold, signed char steps);
+std::vector<signed char> ifUndulations(const std::vector<signed char>& values, const std::vector<signed char>& zero_indices, signed char threshold);
 
 void dispMemory(){
   Serial.print(F("Free memory=")); 
@@ -56,12 +59,21 @@ void loop() {
     }
 
     if (input_index == limit_input_data) {
-      smoothed_data = smooth_data(input_data, 5, limit_input_data);
+      std::vector<signed char> moved_smoothed_data = smooth_data(input_data, 5, limit_input_data);
+      list_smoothed_data.push_back(std::move(moved_smoothed_data));
       dispMemory();
       input_index = 0;
     }
-    int inclination = (new_value - previous_value)/2;
+    int raw_inclination = (new_value - previous_value) / 2;
 
+    signed char inclination;
+    if (raw_inclination > SCHAR_MAX) {
+      inclination = SCHAR_MAX;
+    } else if (raw_inclination < SCHAR_MIN) {
+      inclination = SCHAR_MIN;
+    } else {
+      inclination = static_cast<signed char>(raw_inclination);
+    }
     input_data[input_index] = inclination;
     input_index++;
 
@@ -70,47 +82,46 @@ void loop() {
 
   if (currentTime - previousTime2 >= interval2) {
     previousTime2 = currentTime;
-    if (!smoothed_data.empty()) {
-      std::vector<int>& begin_vector = smoothed_data;
+    if (!list_smoothed_data.empty()) {
+      std::vector<signed char>& begin_vector = *list_smoothed_data.begin();
       int threshold = 5;
       int steps = 3;
 
-      std::vector<int> zero_indices = extract_zero(begin_vector, threshold, steps);
-      for (int i = 0; i < zero_indices.size(); i++) {
-        Serial.print(zero_indices[i]);
-        Serial.print(" ");
-      }
-      Serial.println(" ");
-      std::vector<int> undulations = ifUndulations(begin_vector, zero_indices, threshold);
-
-      for (int i = 0; i < undulations.size(); i++) {
-        Serial.print(undulations[i]);
-        Serial.println(" ");
-      }
-
-      plus_minus_length.push_back(undulations);
-
-      temporary_last_data.clear();
-      /*
-      int zero_indices_back = zero_indices.back();
-      if (zero_indices.size() != 2 || zero_indices_back != 99){//in case empty have [0 99]
-        int last_indice = zero_indices[zero_indices.size() - 1];//-1 for emitting 99
-        for(int i = last_indice; i > (limit_input_data-1); i++){
-          temporary_last_data.push_back(zero_indices[i]);
+      std::vector<signed char> zero_indices = extract_zero(begin_vector, threshold, steps);
+      if (!zero_indices.empty()){
+        for (int i = 0; i < zero_indices.size(); i++) {
+          Serial.print(zero_indices[i]);
+          Serial.print(" ");
         }
-        Serial.print("last_indice=");
-        Serial.print(last_indice);
-      }
-      Serial.print("temporary_size=");
-      Serial.print(temporary_last_data.size());
+        Serial.println(" ");
+        std::vector<signed char> undulations = ifUndulations(begin_vector, temporary_previous_data, zero_indices, threshold);
 
-      */
+        for (int i = 0; i < undulations.size(); i++) {
+          Serial.print(undulations[i]);
+          Serial.println(" ");
+        }
+        for (int i = 0; i < undulations.size(); i++){
+          plus_minus_length.push_back(undulations[i]);
+        }
       
-      Serial.println(" ");
-      
-      begin_vector.clear();
-      zero_indices.clear();
-      undulations.clear();
+        int zero_indices_back = zero_indices.back();
+        for(int i = zero_indices_back; i < limit_input_data; i++){
+          temporary_previous_data.push_back(zero_indices[i]);
+        }
+        Serial.print("temporary_size=");
+        Serial.print(temporary_previous_data.size());
+        
+        Serial.println(" ");
+        
+        begin_vector.clear();
+        zero_indices.clear();
+        undulations.clear();
+      }else{
+        plus_minus_length.push_back(empty_);
+      }
+
+      list_smoothed_data.erase(list_smoothed_data.begin());
+      temporary_previous_data.clear();
     }
   }
   
@@ -122,8 +133,8 @@ void loop() {
   }
 }
 
-std::vector<int> smooth_data(const std::vector<int>& data, int window_size, int data_size) {
-  std::vector<int> smoothed_data(data_size, 0);
+std::vector<signed char> smooth_data(const std::vector<signed char>& data, signed char window_size, int data_size) {
+  std::vector<signed char> smoothed_data(data_size, 0);
   
   int half_window = window_size / 2;
   
@@ -146,8 +157,8 @@ std::vector<int> smooth_data(const std::vector<int>& data, int window_size, int 
 }
 
 
-std::vector<int> extract_zero(const std::vector<int>& values, int threshold, int steps) {
-  std::vector<int> indices;
+std::vector<signed char> extract_zero(const std::vector<signed char>& values, signed char threshold, signed char steps) {
+  std::vector<signed char> indices;
   int current_index = 0;
   int count = 0;
   while (current_index < values.size()) {
@@ -156,8 +167,8 @@ std::vector<int> extract_zero(const std::vector<int>& values, int threshold, int
       while (current_index + count < values.size() && abs(values[current_index + count]) <= threshold) {
         count++;
       }
-
-      if (count >= steps - 1) {
+      Serial.println(count);
+      if (count >= steps - 1 && count != limit_input_data) {
         indices.push_back(current_index);
         indices.push_back(current_index + count - 1);
       }
@@ -169,8 +180,8 @@ std::vector<int> extract_zero(const std::vector<int>& values, int threshold, int
 }
 
 
-std::vector<int> ifUndulations(const std::vector<int>& values, const std::vector<int>& zero_indices, int threshold) {
-  std::vector<int> undulations;
+std::vector<signed char> ifUndulations(const std::vector<signed char>& values, const std::vector<signed char>& previous_data, const std::vector<signed char>& zero_indices, signed char threshold) {
+  std::vector<signed char> undulations;
 
   for (int i = zero_indices[0]; i < zero_indices.size(); i += 2) {
     int start_index = i;
@@ -178,21 +189,35 @@ std::vector<int> ifUndulations(const std::vector<int>& values, const std::vector
     int start = values[start_index];
     int end = values[end_index];
 
-    int previous = (start_index > 0) ? values[start_index - 1] : start;
+    int previous = (start_index > 0) ? values[start_index - 1] : previous_data.back();
     int next = (end_index < values.size() - 1) ? values[end_index + 1] : end;
 
     int indice_start = zero_indices[start_index];
     int indice_end = zero_indices[end_index];
 
-    if (abs(previous - start) > threshold && abs(end - next) > threshold) {//modify
-      undulations.push_back(indice_end-indice_start);
-    }else{
-      undulations.push_back(-(indice_end-indice_start));
+    int sum_previous_data = 0;
+    int num_sum_previous_elements;
+
+    for (num_sum_previous_elements = 1; i <= previous_data.size(); i++){
+      int previous_value = previous_data[i];
+      if (abs(previous_value) < threshold){
+        break;
+      }
+      sum_previous_data += previous_value;
+    }
+///////////////////////////////////////////////
+    for ()
+
+    if (abs(previous - start) > threshold && abs(end - next) > threshold) {
+      undulations.push_back(indice_end - indice_start);
+    } else {
+      undulations.push_back(-(indice_end - indice_start));
     }
   }
 
-    return std::move(undulations);
-  }
+  return std::move(undulations);
+}
+
 
 /*
 void determine_morse(){
