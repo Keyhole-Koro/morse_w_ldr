@@ -3,7 +3,7 @@
 #include <limits.h>
 
 unsigned long previousTime1 = 0;
-unsigned char interval1 = 10;
+unsigned char interval1 = 20;
 
 unsigned long previousTime2 = 0;
 unsigned int interval2 = 100;
@@ -25,8 +25,8 @@ int input_index = 0;
 int previous_value = 0;
 
 std::vector<signed char> smooth_data(const std::vector<signed char>& data, signed char window_size, int data_size);
-std::vector<signed char> extract_zero(const std::vector<signed char>& values, signed char threshold, signed char steps);
-std::vector<signed char> ifUndulations(const std::vector<signed char>& values, const std::vector<signed char>& zero_indices, signed char threshold);
+std::vector<signed char> extract_zero(const std::vector<signed char>& values, const std::vector<signed char>& previous_data, signed char threshold, signed char steps);
+std::vector<signed char> ifUndulations(const std::vector<signed char>& values, const std::vector<signed char>& temporary_previous_data, const std::vector<signed char>& zero_indices, signed char threshold);
 
 void dispMemory(){
   Serial.print(F("Free memory=")); 
@@ -59,12 +59,16 @@ void loop() {
     }
 
     if (input_index == limit_input_data) {
-      std::vector<signed char> moved_smoothed_data = smooth_data(input_data, 5, limit_input_data);
-      list_smoothed_data.push_back(std::move(moved_smoothed_data));
+      std::vector<signed char> smoothed_data = smooth_data(input_data, 5, limit_input_data);
+      list_smoothed_data.push_back(std::move(smoothed_data));
       dispMemory();
+      for (int i = 0; i < smoothed_data.size(); i++) {
+          Serial.print(smoothed_data[i]);
+          Serial.print(" ");
+        }
       input_index = 0;
     }
-    int raw_inclination = (new_value - previous_value) / 2;
+    int raw_inclination = (new_value - previous_value);
 
     signed char inclination;
     if (raw_inclination > SCHAR_MAX) {
@@ -84,8 +88,8 @@ void loop() {
     previousTime2 = currentTime;
     if (!list_smoothed_data.empty()) {
       std::vector<signed char>& begin_vector = *list_smoothed_data.begin();
-      int threshold = 5;
-      int steps = 3;
+      signed char threshold = 5;
+      signed char steps = 3;
 
       std::vector<signed char> zero_indices = extract_zero(begin_vector, threshold, steps);
       if (!zero_indices.empty()){
@@ -157,12 +161,18 @@ std::vector<signed char> smooth_data(const std::vector<signed char>& data, signe
 }
 
 
-std::vector<signed char> extract_zero(const std::vector<signed char>& values, signed char threshold, signed char steps) {
+std::vector<signed char> extract_zero(const std::vector<signed char>& values, const std::vector<signed char>& previous_data, signed char threshold, signed char steps) {
   std::vector<signed char> indices;
+  int num_new_index = values.size();
+  int num_previous_index = previous_data.size();
+  int whole_index = num_new_index+num_previous_index;
   int current_index = 0;
   int count = 0;
-  while (current_index < values.size()) {
-    if (abs(values[current_index]) <= threshold) {
+  int value = 0;
+  while (current_index < whole_index) {
+    value = (current_index < num_previous_index) ? previous_data[current_index]:values[current_index];
+    ////////////////////
+    if (abs(value) <= threshold) {
       count = 1;
       while (current_index + count < values.size() && abs(values[current_index + count]) <= threshold) {
         count++;
@@ -183,40 +193,28 @@ std::vector<signed char> extract_zero(const std::vector<signed char>& values, si
 std::vector<signed char> ifUndulations(const std::vector<signed char>& values, const std::vector<signed char>& previous_data, const std::vector<signed char>& zero_indices, signed char threshold) {
   std::vector<signed char> undulations;
 
-  for (int i = zero_indices[0]; i < zero_indices.size(); i += 2) {
-    int start_index = i;
-    int end_index = i + 1;
-    int start = values[start_index];
-    int end = values[end_index];
+  for (int i = 0; i < zero_indices.size(); i += 2) {
+    int start_index = zero_indices[i];
+    int end_index = zero_indices[i + 1];
 
-    int previous = (start_index > 0) ? values[start_index - 1] : previous_data.back();
-    int next = (end_index < values.size() - 1) ? values[end_index + 1] : end;
+    signed char start = values[start_index];
+    signed char end = values[end_index];
 
-    int indice_start = zero_indices[start_index];
-    int indice_end = zero_indices[end_index];
+    signed char previous = (start_index > 0) ? values[start_index - 1] : previous_data.back();
+    signed char next = (end_index < values.size() - 1) ? values[end_index + 1] : end;
 
-    int sum_previous_data = 0;
-    int num_sum_previous_elements;
-
-    for (num_sum_previous_elements = 1; i <= previous_data.size(); i++){
-      int previous_value = previous_data[i];
-      if (abs(previous_value) < threshold){
-        break;
-      }
-      sum_previous_data += previous_value;
-    }
-///////////////////////////////////////////////
-    for ()
+    signed char length = end_index - start_index + 1;
 
     if (abs(previous - start) > threshold && abs(end - next) > threshold) {
-      undulations.push_back(indice_end - indice_start);
+      undulations.push_back(length);
     } else {
-      undulations.push_back(-(indice_end - indice_start));
+      undulations.push_back(-length);
     }
   }
 
   return std::move(undulations);
 }
+
 
 
 /*
