@@ -3,17 +3,17 @@
 #include <limits.h>
 
 unsigned long previousTime1 = 0;
-unsigned char interval1 = 20;
+unsigned char interval1 = 5;
 
 unsigned long previousTime2 = 0;
-unsigned int interval2 = 100;
+unsigned int interval2 = 50;
 
 unsigned long previousTime3 = 0;
-unsigned int interval3 = 1000;
+unsigned int interval3 = 50;
 
 signed char empty_ = -99;
 
-const int limit_input_data = 100;
+const int limit_input_data = 150;
 
 std::vector<std::vector<signed char>> list_smoothed_data;
 std::vector<signed char> input_data(limit_input_data);
@@ -62,10 +62,12 @@ void loop() {
       std::vector<signed char> smoothed_data = smooth_data(input_data, 5, limit_input_data);
       list_smoothed_data.push_back(std::move(smoothed_data));
       dispMemory();
+      /*
       for (int i = 0; i < smoothed_data.size(); i++) {
           Serial.print(smoothed_data[i]);
           Serial.print(" ");
         }
+      */
       input_index = 0;
     }
     int raw_inclination = (new_value - previous_value);
@@ -88,11 +90,12 @@ void loop() {
     previousTime2 = currentTime;
     if (!list_smoothed_data.empty()) {
       std::vector<signed char>& begin_vector = *list_smoothed_data.begin();
-      signed char threshold = 5;
+      signed char threshold = 10;
       signed char steps = 3;
 
-      std::vector<signed char> zero_indices = extract_zero(begin_vector, threshold, steps);
+      std::vector<signed char> zero_indices = extract_zero(begin_vector, temporary_previous_data, threshold, steps);
       if (!zero_indices.empty()){
+        Serial.print("zero_indices=");
         for (int i = 0; i < zero_indices.size(); i++) {
           Serial.print(zero_indices[i]);
           Serial.print(" ");
@@ -100,22 +103,26 @@ void loop() {
         Serial.println(" ");
         std::vector<signed char> undulations = ifUndulations(begin_vector, temporary_previous_data, zero_indices, threshold);
 
+        /*
+        Serial.print("undulations=");
         for (int i = 0; i < undulations.size(); i++) {
           Serial.print(undulations[i]);
           Serial.println(" ");
         }
+        */
         for (int i = 0; i < undulations.size(); i++){
           plus_minus_length.push_back(undulations[i]);
         }
-      
-        int zero_indices_back = zero_indices.back();
-        for(int i = zero_indices_back; i < limit_input_data; i++){
-          temporary_previous_data.push_back(zero_indices[i]);
-        }
-        Serial.print("temporary_size=");
-        Serial.print(temporary_previous_data.size());
+
+        temporary_previous_data.clear();
         
-        Serial.println(" ");
+        int zero_indices_back = zero_indices.back();
+
+        if (zero_indices_back>0){
+          for(int i = zero_indices_back; i < limit_input_data; i++){
+            temporary_previous_data.push_back(zero_indices[i]);
+          }
+        }
         
         begin_vector.clear();
         zero_indices.clear();
@@ -125,7 +132,6 @@ void loop() {
       }
 
       list_smoothed_data.erase(list_smoothed_data.begin());
-      temporary_previous_data.clear();
     }
   }
   
@@ -161,32 +167,41 @@ std::vector<signed char> smooth_data(const std::vector<signed char>& data, signe
 }
 
 
-std::vector<signed char> extract_zero(const std::vector<signed char>& values, const std::vector<signed char>& previous_data, signed char threshold, signed char steps) {
+std::vector<signed char> extract_zero(const std::vector<signed char>& current_data, const std::vector<signed char>& previous_data, signed char threshold, signed char steps) {
   std::vector<signed char> indices;
-  int num_new_index = values.size();
+  int num_new_index = current_data.size();
   int num_previous_index = previous_data.size();
   int whole_index = num_new_index+num_previous_index;
   int current_index = 0;
   int count = 0;
   int value = 0;
+  int next_value = 0;
   while (current_index < whole_index) {
-    value = (current_index < num_previous_index) ? previous_data[current_index]:values[current_index];
-    ////////////////////
+    value = (current_index < num_previous_index) ? previous_data[current_index]:current_data[current_index-num_previous_index];
     if (abs(value) <= threshold) {
       count = 1;
-      while (current_index + count < values.size() && abs(values[current_index + count]) <= threshold) {
+      Serial.print(" ");
+      while (current_index + count < whole_index) {
+        next_value = (current_index + count < num_previous_index) ? previous_data[current_index + count] : current_data[current_index - num_previous_index + count];
+        Serial.print(next_value);
+        Serial.print(",");
+        
+        if (abs(next_value) > threshold) {
+            break;
+        }
         count++;
-      }
-      Serial.println(count);
+      } 
       if (count >= steps - 1 && count != limit_input_data) {
-        indices.push_back(current_index);
-        indices.push_back(current_index + count - 1);
+        int start_index =  (current_index < num_previous_index) ? -current_index : current_index-num_previous_index;
+        int end_index =  (current_index < num_previous_index) ? -(current_index + count -1) : current_index-num_previous_index-1;
+        indices.push_back(start_index);
+        indices.push_back(end_index);
       }
     }
     current_index += count;
     current_index += steps;
   }
-  return std::move(indices);
+  return std::move(indices);//in previous data be gonna - current data be gonna +
 }
 
 
