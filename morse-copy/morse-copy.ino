@@ -61,7 +61,6 @@ void loop() {
     if (input_index == limit_input_data) {
       std::vector<signed char> smoothed_data = smooth_data(input_data, 5, limit_input_data);
       list_smoothed_data.push_back(std::move(smoothed_data));
-      dispMemory();
       /*
       for (int i = 0; i < smoothed_data.size(); i++) {
           Serial.print(smoothed_data[i]);
@@ -80,6 +79,9 @@ void loop() {
     } else {
       inclination = static_cast<signed char>(raw_inclination);
     }
+
+    Serial.print(inclination);
+    Serial.print(" ");
     input_data[input_index] = inclination;
     input_index++;
 
@@ -95,12 +97,7 @@ void loop() {
 
       std::vector<signed char> zero_indices = extract_zero(begin_vector, temporary_previous_data, threshold, steps);
       if (!zero_indices.empty()){
-        Serial.print("zero_indices=");
-        for (int i = 0; i < zero_indices.size(); i++) {
-          Serial.print(zero_indices[i]);
-          Serial.print(" ");
-        }
-        Serial.println(" ");
+
         std::vector<signed char> undulations = ifUndulations(begin_vector, temporary_previous_data, zero_indices, threshold);
 
         /*
@@ -180,12 +177,9 @@ std::vector<signed char> extract_zero(const std::vector<signed char>& current_da
     value = (current_index < num_previous_index) ? previous_data[current_index]:current_data[current_index-num_previous_index];
     if (abs(value) <= threshold) {
       count = 1;
-      Serial.print(" ");
       while (current_index + count < whole_index) {
         next_value = (current_index + count < num_previous_index) ? previous_data[current_index + count] : current_data[current_index - num_previous_index + count];
-        Serial.print(next_value);
-        Serial.print(",");
-        
+
         if (abs(next_value) > threshold) {
             break;
         }

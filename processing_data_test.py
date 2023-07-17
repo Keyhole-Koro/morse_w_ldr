@@ -109,8 +109,8 @@ def main():
 	judge(x, smooth_y)
 	
 	plt.plot(x, old_y)
-	plt.plot(x, smooth_y)
-	makeplot(x, y)
+	#plt.plot(x, smooth_y)
+	makeplot(x, smooth_y)
 
 def main2():
 	file_path = "C:\\Users\\kiho\\OneDrive\\デスクトップ\\morse\\kiho2.txt"
@@ -131,4 +131,4 @@ def main2():
 	makeplot(x, y)
 	
 if __name__ == '__main__':
-	main2()
+	main()
