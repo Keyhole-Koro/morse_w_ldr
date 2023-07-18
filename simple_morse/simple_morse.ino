@@ -1,8 +1,11 @@
 #include <Arduino.h>
 #include <ArduinoSTL.h>
 #include <string>
+#include <map>
+#include <avr/pgmspace.h>
 
-int threshold = 300;
+
+int threshold = 400;
 
 unsigned long previousTime1 = 0;
 unsigned char interval1 = 10;
@@ -11,44 +14,21 @@ unsigned long previousTime2 = 0;
 unsigned char interval2 = 50;
 
 unsigned long previousTime3 = 0;
-unsigned char interval3 = 50;
+unsigned char interval3 = 500;
 
 std::vector<signed char> data;
-std::vector<std::string> morse_input;
+std::string morse_input;
+std::vector<std::string> list_morse_input;
 
 unsigned char on_count = 0;
 signed char off_count = 0;
 
 bool if_on = false;
 
-const char* morseCode[] = {
-    ".-", "a",
-    "-...", "b",
-    "-.-.", "c",
-    "-..", "d",
-    ".", "e",
-    "..-.", "f",
-    "--.", "g",
-    "....", "h",
-    "..", "i",
-    ".---", "j",
-    "-.-", "k",
-    ".-..", "l",
-    "--", "m",
-    "-.", "n",
-    "---", "o",
-    ".--.", "p",
-    "--.-", "q",
-    ".-.", "r",
-    "...", "s",
-    "-", "t",
-    "..-", "u",
-    "...-", "v",
-    ".--", "w",
-    "-..-", "x",
-    "-.--", "y",
-    "--..", "z"
-};
+String decodedMessage;
+
+const char* morseCode[] = {".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---", "-.-", ".-..", "--",
+                            "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.."};
 
 void dispMemory() {
   Serial.print(F("Free memory=")); 
@@ -65,6 +45,7 @@ int freeRam() {
 void setup() {
   Serial.begin(9600);
   Serial.println(" ");
+  dispMemory();
 }
 
 void loop() {
@@ -95,52 +76,44 @@ void loop() {
 
   if (currentTime - previousTime2 >= interval2) {
     previousTime2 = currentTime;
-    if (!morse_input.empty()) {
-      int index = 0;
-      std::string decodedMessage;
-      std::string morse;
-      std::string value;
-      bool period = false;
-      bool no_match = false;
-      for (index = 0; index < 26; index++) {
-        value = morse_input[index];
-        if (value == "_") {
-          period = true;
-        }
-        if (no_match) {
-          Serial.print("?");
-        }
-        morse += value;
-        if (period) {
-          for (int j = 0; j < 26; j++) {
-            if (morse == morseCode[j]) {
-              Serial.print(morseCode[j]);
-              morse_input.erase(morse_input.begin(), morse_input.begin() + index);
-              break;
-            }
+    if (!list_morse_input.empty()) {
+      for (int i = 0; i < list_morse_input.size(); i++){
+        bool ifFound = true;
+        std::string morse_input = std::move(list_morse_input.front());
+        for (int i = 0; i < 26; i++) {
+          if (morse_input == morseCode[i]) {
+            decodedMessage = static_cast<char>('A' + i);
+            ifFound = false;
+            break;
           }
-          period = false;
         }
+        /*
+        if (ifFound){
+          decodedMessage = "_";
+        }
+        */
+        Serial.print(decodedMessage);
       }
+      
+      list_morse_input.clear();
     }
   }
 
   if (currentTime - previousTime3 >= interval3) {
     previousTime3 = currentTime;
     if (!data.empty()) {
-      for (int i = 0; i < data.size(); i++) {
-        if (data[i + 1] < -50) {
-          morse_input.push_back((data[i] < 10) ? "." : "-");
-        } else if (data[i] > 0) {
-          morse_input.push_back("_");// Blank
-        }
-      }
-      for (std::string m_i : morse_input) {
-        for (char c : m_i) {
-          Serial.print(c);
+      for (signed char value : data) {
+        if (value > 0) {
+          morse_input += (value < 20) ? "." : "-";
+        } else if (value < -50) {
+          list_morse_input.push_back(std::move(morse_input));
+          morse_input.clear();
         }
       }
       data.clear();
+    } else if (!morse_input.empty() && off_count < -50) {
+      list_morse_input.push_back(std::move(morse_input));
+      morse_input.clear();
     }
   }
 }

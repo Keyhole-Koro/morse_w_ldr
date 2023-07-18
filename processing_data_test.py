@@ -109,7 +109,7 @@ def main():
 	judge(x, smooth_y)
 	
 	plt.plot(x, old_y)
-	#plt.plot(x, smooth_y)
+	plt.plot(x, smooth_y)
 	makeplot(x, smooth_y)
 
 def main2():
