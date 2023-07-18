@@ -1,32 +1,34 @@
 #include <Arduino.h>
 #include <ArduinoSTL.h>
-#include <limits.h>
+#include <string>
+#include <map>
+#include <avr/pgmspace.h>
+
+
+int threshold = 400;
 
 unsigned long previousTime1 = 0;
-unsigned char interval1 = 5;
+unsigned char interval1 = 10;
 
 unsigned long previousTime2 = 0;
-unsigned int interval2 = 50;
+unsigned char interval2 = 50;
 
-const int limit_input_data = 150;
+unsigned long previousTime3 = 0;
+unsigned char interval3 = 500;
 
-char threshold = 5;
+std::vector<signed char> data;
+std::string morse_input;
+std::vector<std::string*> list_morse_input;
 
-std::vector<std::vector<signed char>> list_smoothed_data;
-std::vector<signed char> inclination_data;
-std::vector<int> previous_data(5);
+unsigned char on_count = 0;
+signed char off_count = 0;
 
-signed char noisefilter(signed char previous, signed char current);
-signed char converge_to_zero(signed char initial_value, signed char convergence_rate);
+bool if_on = false;
 
-std::vector<signed char> smooth_data(const std::vector<signed char>& data, signed char window_size);
-std::vector<signed char> ifUndulations(const std::vector<signed char>& data, signed char threshold);
+String decodedMessage;
 
-bool push_ongoing = false;
-
-int max = 0;
-int previous_input_value = 0;
-int min = 0;
+const char* morseCode[] = {".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---", "-.-", ".-..", "--",
+                            "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.."};
 
 void dispMemory() {
   Serial.print(F("Free memory=")); 
@@ -43,6 +45,7 @@ int freeRam() {
 void setup() {
   Serial.begin(9600);
   Serial.println(" ");
+  dispMemory();
 }
 
 void loop() {
@@ -51,138 +54,66 @@ void loop() {
   if (currentTime - previousTime1 >= interval1) {
     previousTime1 = currentTime;
     int input_value = analogRead(A0);
-
-    if (previous_input_value == 0) {
-      previous_input_value = input_value;
-    }
-
-    int raw_inclination = (input_value - previous_input_value);
-
-    previous_data.erase(previous_data.begin());
-    previous_data.push_back(raw_inclination);
-
-    if (previous_data.empty()){
-      if (previous_input_value == 0) {
-      previous_input_value = input_value;
-      for (int i = 0; i < previous_data.size(); i++){
-        previous_data[i] = 1;
-      }
-    }
-    }
-
-    int inclination_sum = 0;
-    for (int data : previous_data){
-      inclination_sum += data;
-    }
-
-    /*
-    signed char inclination;
-    if (mean_inclination >= SCHAR_MAX) {
-      inclination = SCHAR_MAX;
-    } else if (mean_inclination <= SCHAR_MIN) {
-      inclination = SCHAR_MIN;
+    if (input_value < threshold) {
+      if_on = true;
     } else {
-      inclination = static_cast<signed char>(mean_inclination);
-    }
-    */
-    int inclination = 0;
-    if (inclination_sum!=0){
-      inclination = inclination_sum/5;
-    }
-    
-    if (inclination < 0 && inclination - min < -threshold && !push_ongoing){
-      inclination_data.clear();
-      Serial.print("start");
-      push_ongoing = true;
-    }
-    if (inclination > 0 && inclination - max > threshold && push_ongoing){
-      Serial.print("end");
-      for (int data : inclination_data){
-        Serial.print(data);
-        Serial.print(" ");
-      }
-      push_ongoing = false;
-      list_smoothed_data.push_back(inclination_data);
-      inclination_data.clear();
-      max = 0;
-      min = 0;
+      if_on = false;
     }
 
-    if (min > inclination){
-      min = inclination;
-    }
-    if (max < inclination){
-      max = inclination;
-    }
-
-    if (push_ongoing){
-      inclination_data.push_back(inclination);
+    if (if_on && on_count < 127) {
+      on_count++;
+    } else if (off_count > -128) {
+      off_count--;
     }
 
-    previous_input_value = input_value; 
+    if (!if_on && on_count > 0) {
+      data.push_back(off_count);
+      data.push_back(on_count);
+      on_count = 0;
+      off_count = 0;
+    }
   }
 
   if (currentTime - previousTime2 >= interval2) {
-    if (!list_smoothed_data.empty()) {
-      std::vector<signed char>& input_vector = *list_smoothed_data.begin();
+    previousTime2 = currentTime;
+    if (!list_morse_input.empty()) {
+      std::string morse;
+      bool period = false;
+      bool no_match = false;
+      for (std::string* morse : list_morse_input){
+        Serial.print("morse->c_str()");
+        Serial.print(morse->c_str());
+          for (int i = 0; i < 26; i++) {
+            if (morse == morseCode[i]) {
+                decodedMessage += (char)('A' + i);  // Convert index to corresponding letter
+                //no_match = true;
+                break;
+            }
+        }
+      }
+      //Serial.print(decodedMessage);
+      list_morse_input.clear();
+    }
+      
+  }
 
-      std::vector<signed char> smoothed_data = smooth_data(input_vector, 5);
-      //bool undulations = ifUndulations(smoothed_data, threshold);
-
-      // Perform further operations with smoothed_data and undulations
+  if (currentTime - previousTime3 >= interval3) {
+    previousTime3 = currentTime;
+    if (!data.empty()) {
+      unsigned char index;
+      for (index = 0; index < data.size(); index++) {    
+        if (data[index] > 0){
+          morse_input += (data[index] < 20) ? "." : "-";
+        } else if (data[index] < -50) {
+          list_morse_input.push_back(&morse_input);
+          morse_input.clear();
+        }
+      }
+      if (!morse_input.empty()) {
+        //Serial.print(morse_input.c_str());
+      }
+      data.clear();
     }
   }
 }
 
-signed char noisefilter(signed char previous, signed char current) {
-    signed char difference = abs(previous - current);
-    signed char k;
-    
-    if (difference > 3 && abs(current) < 50) {
-        k = 1;
-    } else {
-        k = 0;
-    }
-    
-    return converge_to_zero(current, k);
-}
-
-signed char converge_to_zero(signed char initial_value, signed char convergence_rate) {
-    signed char current_value = initial_value;
-    current_value -= current_value * convergence_rate;
-
-    return current_value;
-}
-
-
-std::vector<signed char> smooth_data(const std::vector<signed char>& data, signed char window_size) {
-  std::vector<signed char> smoothed_data;
-  int data_size = data.size();
-
-  int half_window = window_size / 2;
-
-  int cumulative_sum = 0;
-  for (int i = 0; i < window_size; i++) {
-    cumulative_sum += data[i];
-  }
-
-  for (int i = 0; i < data_size; i++) {
-    if (i > half_window) {
-      cumulative_sum -= data[i - half_window - 1];
-    }
-    if (i + half_window < data_size) {
-      cumulative_sum += data[i + half_window];
-    }
-    smoothed_data.push_back(cumulative_sum / window_size);
-  }
-
-  return smoothed_data;
-}
-
-std::vector<signed char> ifUndulations(const std::vector<signed char>& data, signed char threshold) {
-  std::vector<signed char> result;
-
-  // Perform operations to detect undulations based on the data and threshold
-
-  return result;
-}
