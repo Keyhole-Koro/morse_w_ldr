@@ -22,7 +22,7 @@ signed char off_count = 0;
 
 int previous_value = 0;
 
-signed char threshold = 20;
+signed char threshold = 40;
 
 std::string morse_input;
 
@@ -120,21 +120,24 @@ void loop() {
         } else if (!upward_found && input_data[i] > threshold) {
             upward_found = true;
             off_count = 0;
-            morse += (on_count < 13) ? "." : "-";
+            morse += (on_count < 10) ? "." : "-";
           }
         if (on_count < 127){
           on_count++;
         }
         if (off_count > -128)
           off_count--;
+
+        if(!morse.empty() && upward_found && off_count < -30) {
+          input_morse.push_back(std::move(morse));
+          morse.clear();
+          off_count = 0;
+        }
         }
       input_data.clear(); 
     }
   }
-  if(!morse.empty() && off_count < -50) {
-      input_morse.push_back(std::move(morse));
-      morse.clear();
-    }
+  
 }
 
 signed char convert_int_char(int int_input) {

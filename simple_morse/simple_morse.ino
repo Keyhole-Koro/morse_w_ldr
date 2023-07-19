@@ -28,7 +28,7 @@ bool if_on = false;
 String decodedMessage;
 
 const char* morseCode[] = {".-", "-...", "-.-.", "-..", ".", "..-.", "--.", "....", "..", ".---", "-.-", ".-..", "--",
-                            "-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.."};
+							"-.", "---", ".--.", "--.-", ".-.", "...", "-", "..-", "...-", ".--", "-..-", "-.--", "--.."};
 
 void dispMemory() {
   Serial.print(F("Free memory=")); 
@@ -52,68 +52,68 @@ void loop() {
   unsigned long currentTime = millis();
 
   if (currentTime - previousTime1 >= interval1) {
-    previousTime1 = currentTime;
-    int input_value = analogRead(A0);
-    if (input_value < threshold) {
-      if_on = true;
-    } else {
-      if_on = false;
-    }
+	previousTime1 = currentTime;
+	int input_value = analogRead(A0);
+	if (input_value < threshold) {
+	  if_on = true;
+	} else {
+	  if_on = false;
+	}
 
-    if (if_on && on_count < 127) {
-      on_count++;
-    } else if (off_count > -128) {
-      off_count--;
-    }
+	if (if_on && on_count < 127) {
+	  on_count++;
+	} else if (off_count > -128) {
+	  off_count--;
+	}
 
-    if (!if_on && on_count > 0) {
-      data.push_back(off_count);
-      data.push_back(on_count);
-      on_count = 0;
-      off_count = 0;
-    }
+	if (!if_on && on_count > 0) {
+	  data.push_back(off_count);
+	  data.push_back(on_count);
+	  on_count = 0;
+	  off_count = 0;
+	}
   }
 
   if (currentTime - previousTime2 >= interval2) {
-    previousTime2 = currentTime;
-    if (!list_morse_input.empty()) {
-      for (int i = 0; i < list_morse_input.size(); i++){
-        bool ifFound = true;
-        std::string morse_input = std::move(list_morse_input.front());
-        for (int i = 0; i < 26; i++) {
-          if (morse_input == morseCode[i]) {
-            decodedMessage = static_cast<char>('A' + i);
-            ifFound = false;
-            break;
-          }
-        }
-        /*
-        if (ifFound){
-          decodedMessage = "_";
-        }
-        */
-        Serial.print(decodedMessage);
-      }
-      
-      list_morse_input.clear();
-    }
+	previousTime2 = currentTime;
+	if (!list_morse_input.empty()) {
+	  for (int i = 0; i < list_morse_input.size(); i++){
+		bool ifFound = true;
+		std::string morse_input = std::move(list_morse_input.front());
+		for (int i = 0; i < 26; i++) {
+		  if (morse_input == morseCode[i]) {
+			decodedMessage = static_cast<char>('A' + i);
+			ifFound = false;
+			break;
+		  }
+		}
+		/*
+		if (ifFound){
+		  decodedMessage = "_";
+		}
+		*/
+		Serial.print(decodedMessage);
+	  }
+
+	  list_morse_input.clear();
+	}
   }
 
   if (currentTime - previousTime3 >= interval3) {
-    previousTime3 = currentTime;
-    if (!data.empty()) {
-      for (signed char value : data) {
-        if (value > 0) {
-          morse_input += (value < 20) ? "." : "-";
-        } else if (value < -50) {
-          list_morse_input.push_back(std::move(morse_input));
-          morse_input.clear();
-        }
-      }
-      data.clear();
-    } else if (!morse_input.empty() && off_count < -50) {
-      list_morse_input.push_back(std::move(morse_input));
-      morse_input.clear();
-    }
+	previousTime3 = currentTime;
+	if (!data.empty()) {
+	  for (signed char value : data) {
+		if (value > 0) {
+		  morse_input += (value < 20) ? "." : "-";
+		} else if (value < -50) {
+		  list_morse_input.push_back(std::move(morse_input));
+		  morse_input.clear();
+		}
+	  }
+	  data.clear();
+	} else if (!morse_input.empty() && off_count < -50) {
+	  list_morse_input.push_back(std::move(morse_input));
+	  morse_input.clear();
+	}
   }
 }
