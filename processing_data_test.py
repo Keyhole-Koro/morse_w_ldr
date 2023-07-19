@@ -113,7 +113,7 @@ def main():
 	makeplot(x, smooth_y)
 
 def main2():
-	file_path = "C:\\Users\\kiho\\OneDrive\\デスクトップ\\morse\\kiho2.txt"
+	file_path = "C:\\Users\\kiho\\OneDrive\\デスクトップ\\morse\\kiho3.txt"
 	file = open(file_path, 'r')
 	data = file.read().split()
 	file.close()
@@ -131,4 +131,4 @@ def main2():
 	makeplot(x, y)
 	
 if __name__ == '__main__':
-	main()
+	main2()
