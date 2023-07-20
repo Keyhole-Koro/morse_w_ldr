@@ -1,9 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoSTL.h>
 #include <string>
-#include <map>
-#include <avr/pgmspace.h>
-
 
 int threshold = 400;
 
@@ -17,8 +14,8 @@ unsigned long previousTime3 = 0;
 unsigned char interval3 = 500;
 
 std::vector<signed char> data;
-std::string morse_input;
-std::vector<std::string> list_morse_input;
+std::string morse;
+std::vector<std::string> input_morse;
 
 unsigned char on_count = 0;
 signed char off_count = 0;
@@ -76,44 +73,35 @@ void loop() {
 
   if (currentTime - previousTime2 >= interval2) {
 	previousTime2 = currentTime;
-	if (!list_morse_input.empty()) {
-	  for (int i = 0; i < list_morse_input.size(); i++){
-		bool ifFound = true;
-		std::string morse_input = std::move(list_morse_input.front());
-		for (int i = 0; i < 26; i++) {
-		  if (morse_input == morseCode[i]) {
-			decodedMessage = static_cast<char>('A' + i);
-			ifFound = false;
-			break;
-		  }
-		}
-		/*
-		if (ifFound){
-		  decodedMessage = "_";
-		}
-		*/
-		Serial.print(decodedMessage);
+	if (!input_morse.empty()) {
+	  for (signed char i = 0; i < input_morse.size(); i++){
+      decodedMessage = "_";
+      std::string morse_input = std::move(input_morse.front());
+      for (signed char i = 0; i < 26; i++) {
+        if (morse_input == morseCode[i]) {
+        decodedMessage = static_cast<char>('A' + i);
+        break;
+        }
+      }
+      Serial.print(decodedMessage);
 	  }
-
-	  list_morse_input.clear();
+	  input_morse.clear();
 	}
   }
+  if (!morse.empty() && off_count < -30) {
+	  input_morse.push_back(std::move(morse));
+	  morse.clear();
+	}
 
   if (currentTime - previousTime3 >= interval3) {
 	previousTime3 = currentTime;
 	if (!data.empty()) {
 	  for (signed char value : data) {
 		if (value > 0) {
-		  morse_input += (value < 20) ? "." : "-";
-		} else if (value < -50) {
-		  list_morse_input.push_back(std::move(morse_input));
-		  morse_input.clear();
+		  morse += (value < 20) ? "." : "-";
 		}
-	  }
+	}
 	  data.clear();
-	} else if (!morse_input.empty() && off_count < -50) {
-	  list_morse_input.push_back(std::move(morse_input));
-	  morse_input.clear();
 	}
   }
 }

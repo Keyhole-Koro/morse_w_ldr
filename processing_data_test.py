@@ -73,9 +73,8 @@ def smooth_data(data, window_size):
 def makeplot(x, y):
 	plt.plot(x, y)
 	
-	plt.xlabel('X Range')
-	plt.ylabel('Y Range')
-	plt.title('Plot of X Range and Y Range')
+	plt.xlabel('the number of data')
+	plt.ylabel('inclined value')
 
 	plt.show()
 
@@ -112,7 +111,7 @@ def main():
 	
 	#plt.plot(x, old_y)
 	#plt.plot(x, smooth_y)
-	makeplot(x, original)
+	makeplot(x, old_y)
 
 def main2():
 	file_path = "C:\\Users\\kiho\\OneDrive\\デスクトップ\\morse\\kiho3.txt"

@@ -11,7 +11,6 @@ unsigned int interval2 = 60;
 unsigned long previousTime3 = 0;
 unsigned int interval3 = 10;
 
-
 const char ele_sum = 10;
 const char interval_sum = 3;
 
@@ -107,17 +106,17 @@ void loop() {
   if (currentTime - previousTime3 >= interval3) {
     previousTime3 = currentTime;
     if (!input_data.empty()){
-      for (signed char i = 0; i < input_data.size(); i++){
-        if (first_signal && input_data[i] < -threshold){
+      for (std::vector<signed char>::iterator value = input_data.begin(); value != input_data.end(); ++value) {
+        if (first_signal && *value < -threshold){
           on_count = 0;
           upward_found = false;
           first_signal = false;
         }
 
-        if (upward_found && input_data[i] < -threshold){
+        if (upward_found && *value < -threshold){
           on_count = 0;
           upward_found = false;
-        } else if (!upward_found && input_data[i] > threshold) {
+        } else if (!upward_found && *value > threshold) {
             upward_found = true;
             off_count = 0;
             morse += (on_count < 10) ? "." : "-";
